@@ -182,6 +182,10 @@ var wrongNote={}, examHistory={};
 
 function loadGzip(b64,cb){
   try{
+    if(typeof DecompressionStream === 'undefined') {
+      cb(new Error('DecompressionStream not supported'));
+      return;
+    }
     var bin=atob(b64),bytes=new Uint8Array(bin.length);
     for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
     var ds=new DecompressionStream('gzip');
@@ -192,7 +196,8 @@ function loadGzip(b64,cb){
         var total=0;for(var j=0;j<chunks.length;j++)total+=chunks[j].length;
         var out=new Uint8Array(total),off=0;
         for(var j=0;j<chunks.length;j++){out.set(chunks[j],off);off+=chunks[j].length;}
-        cb(null,JSON.parse(new TextDecoder().decode(out)));
+        try { cb(null,JSON.parse(new TextDecoder().decode(out))); }
+        catch(e) { cb(e); }
       }else{chunks.push(x.value);read();}
     }).catch(function(e){cb(e);});}
     read();
@@ -243,7 +248,7 @@ function startWrongNote(){
 
 document.getElementById('load-status').textContent='데이터 로딩 중...';
 loadGzip(DATA_B64,function(err,d){
-  if(err){document.getElementById('load-status').textContent='로드 실패. 새로고침 해주세요.';return;}
+  if(err){document.getElementById('load-status').textContent='로드 실패: '+err.message;console.error('loadGzip err:',err);return;}
   QDATA=d;
   document.getElementById('load-status').textContent='서버 연결 중...';
   gistLoad(function(){
